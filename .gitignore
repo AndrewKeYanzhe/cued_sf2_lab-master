@@ -1,5 +1,5 @@
 #ignore images created
-*.png
+# *.png
 *.jpg
 *.pdf
 #ignore system files
