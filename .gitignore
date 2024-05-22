@@ -17,3 +17,5 @@ __pycache__
 htmlcov
 
 .DS_Store
+
+myenv/
