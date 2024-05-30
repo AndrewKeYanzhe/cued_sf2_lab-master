@@ -9,19 +9,19 @@ from cued_sf2_lab.dct import colxfm
 from cued_sf2_lab.lbt import pot_ii
 from scipy.optimize import minimize_scalar
 
-def lbt(X, N, s, refstep):
+def lbt(X, N, s, step_size, refstep=17, ):
     """
     Parameters:
         X: input image
         N: N * N blocks
         s: scaling factor
-        refstep: reference step for direct quantisation
+        refstep: reference step for direct quantisation, for dctbpp
     """ 
     Xq = quantise(X, refstep)
 
     C = dct_ii(N)
     Pf, Pr = pot_ii(N, s)
-    opt_step = find_optimal_step_size(X, N, s, refstep)[0]
+    # opt_step = find_optimal_step_size(X, N, s, refstep)[0]
 
     t = np.s_[N//2:-N//2] 
     Xp = X.copy() 
@@ -29,7 +29,8 @@ def lbt(X, N, s, refstep):
     Xp[:,t] = colxfm(Xp[:,t].T, Pf).T
 
     Y = colxfm(colxfm(Xp, C).T, C).T        # dct
-    Yq = quantise(Y, opt_step)              # quantisation
+    # Yq = quantise(Y, opt_step)              # quantisation
+    Yq = quantise(Y, step_size)              # quantisation
     Yr = regroup(Yq, N)/N                   # regroup
     Z = colxfm(colxfm(Yq.T, C.T).T, C.T)    # reconstruction
 
@@ -49,7 +50,10 @@ def lbt(X, N, s, refstep):
     plot_image(Zp, ax=ax)
     ax.set(title=f"{N} x {N} block, s = {s}")
 
-    return None
+    return Yq, Yr
+
+def lbt_reconstruct(Yq):
+    return colxfm(colxfm(Yq.T, C.T).T, C.T) 
 
 def dctbpp(Yr, N):
     total_bits = 0
