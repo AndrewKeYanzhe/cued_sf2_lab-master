@@ -140,7 +140,8 @@ def lbt(X, N, s, step_size, refstep=17, plot=True):
 
 
 
-def lbt_reconstruct(Yq):
+def lbt_reconstruct(Yq,N):
+    C = dct_ii(N)
     return colxfm(colxfm(Yq.T, C.T).T, C.T) 
 
 def dctbpp(Yr, N):
