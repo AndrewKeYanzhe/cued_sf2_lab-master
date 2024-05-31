@@ -9,48 +9,136 @@ from cued_sf2_lab.dct import colxfm
 from cued_sf2_lab.lbt import pot_ii
 from scipy.optimize import minimize_scalar
 
-def lbt(X, N, s, step_size, refstep=17, ):
-    """
-    Parameters:
-        X: input image
-        N: N * N blocks
-        s: scaling factor
-        refstep: reference step for direct quantisation, for dctbpp
-    """ 
-    Xq = quantise(X, refstep)
+# def lbt(X, N, s, step_size, refstep=17, plot=True):
+#     """
+#     Parameters:
+#         X: input image
+#         N: N * N blocks
+#         s: scaling factor
+#         refstep: reference step for direct quantisation, for dctbpp
+#     """ 
+#     Xq = quantise(X, refstep)
 
-    C = dct_ii(N)
-    Pf, Pr = pot_ii(N, s)
-    # opt_step = find_optimal_step_size(X, N, s, refstep)[0]
+#     C = dct_ii(N)
+#     Pf, Pr = pot_ii(N, s)
+#     # opt_step = find_optimal_step_size(X, N, s, refstep)[0]
 
-    t = np.s_[N//2:-N//2] 
-    Xp = X.copy() 
+#     t = np.s_[N//2:-N//2] 
+#     Xp = X.copy() 
+#     Xp[t,:] = colxfm(Xp[t,:], Pf)
+#     Xp[:,t] = colxfm(Xp[:,t].T, Pf).T
+
+#     Y = colxfm(colxfm(Xp, C).T, C).T        # dct
+#     # Yq = quantise(Y, opt_step)              # quantisation
+#     Yq = quantise(Y, step_size)              # quantisation
+#     Yr = regroup(Yq, N)/N                   # regroup
+#     Z = colxfm(colxfm(Yq.T, C.T).T, C.T)    # reconstruction
+
+#     Zp = Z.copy() 
+#     Zp[:,t] = colxfm(Zp[:,t].T, Pr.T).T
+#     Zp[t,:] = colxfm(Zp[t,:], Pr.T)
+
+#     print(f"RMS error: {np.std(Zp-X)}")
+
+#     tot_bits_comp = dctbpp(Yr, 16)          # always use dctbpp(Yr, 16)
+#     tot_bits_direct = bpp(Xq) * Xq.size
+#     compression_ratio = tot_bits_direct / tot_bits_comp
+#     print(f"Total compression bits: {tot_bits_comp}")
+#     print(f"Compression ratio: {compression_ratio} \n")
+
+#     if plot:
+#         fig, ax = plt.subplots()
+#         plot_image(Zp, ax=ax)
+#         ax.set(title=f"{N} x {N} block, s = {s}")
+
+#     return Yq, Yr
+
+def lbt(X, N, s, step_size, refstep=17, plot=True):
+
+    # your code here
+    # N=4
+    print("N",N)
+
+
+    C8 = dct_ii(N) #note that c8 is labelled wrongly here but referencing the right matrix
+
+    # decimal_range_stepsize = np.arange(20, 30, 0.1)
+    # decimal_range_s = np.arange(1, 2, 0.01)
+
+
+
+    # optimal_s = -1
+    # highest_compression = -1
+
+
+    Pf, Pr = pot_ii(N,s)
+
+    t = np.s_[N//2:-N//2]  # N is the DCT size, I is the image size
+    Xp = X.copy()  # copy the non-transformed edges directly from X
     Xp[t,:] = colxfm(Xp[t,:], Pf)
     Xp[:,t] = colxfm(Xp[:,t].T, Pf).T
 
-    Y = colxfm(colxfm(Xp, C).T, C).T        # dct
-    # Yq = quantise(Y, opt_step)              # quantisation
-    Yq = quantise(Y, step_size)              # quantisation
-    Yr = regroup(Yq, N)/N                   # regroup
-    Z = colxfm(colxfm(Yq.T, C.T).T, C.T)    # reconstruction
+    Y = colxfm(colxfm(Xp, C8).T, C8).T
 
-    Zp = Z.copy() 
+
+    # optimal_step = -1
+    # smallest_diff = 10e15
+
+    # def f(step_size):
+    #     Y_q_test = quantise(Y,step_size)
+    #     Z = colxfm(colxfm(Y_q_test.T, C8.T).T, C8.T)
+
+    #     Zp = Z.copy()  #copy the non-transformed edges directly from Z
+    #     Zp[:,t] = colxfm(Zp[:,t].T, Pr.T).T
+    #     Zp[t,:] = colxfm(Zp[t,:], Pr.T)
+
+    #     return abs(np.std(X-Xq)-np.std(X-Zp))
+
+
+    # for i in decimal_range_stepsize:
+    #     # print(i,"             ",abs(f(i)))
+    #     if f(i) < smallest_diff:
+    #         smallest_diff = f(i)
+    #         optimal_step = i
+
+    # print("optimal_step",optimal_step)
+
+    optimal_step = step_size
+    Y_q = quantise(Y,optimal_step)
+
+
+    Yr=regroup(Y_q, N)/N  #Yr is from quantised
+    print("Total bits using dctbpp: {:,}".format(int(dctbpp(Yr, 16))))
+
+    Xq = quantise(X,17)
+    X_q_total_bits = bpp(quantise(X,17))*X.shape[0]*X.shape[1]
+
+    compression_ratio = X_q_total_bits/(dctbpp(Yr,16)) #Yr is quantised. this is variable coding N=4 here
+    print("compression ratio",compression_ratio)
+
+
+
+    Z = colxfm(colxfm(Y_q.T, C8.T).T, C8.T)
+    # Z = colxfm(colxfm(Y.T, C8.T).T, C8.T) #dont quantise for now
+
+
+
+    Zp = Z.copy()  #copy the non-transformed edges directly from Z
     Zp[:,t] = colxfm(Zp[:,t].T, Pr.T).T
     Zp[t,:] = colxfm(Zp[t,:], Pr.T)
 
-    print(f"RMS error: {np.std(Zp-X)}")
+    Z_4 = Zp
 
-    tot_bits_comp = dctbpp(Yr, 16)          # always use dctbpp(Yr, 16)
-    tot_bits_direct = bpp(Xq) * Xq.size
-    compression_ratio = tot_bits_direct / tot_bits_comp
-    print(f"Total compression bits: {tot_bits_comp}")
-    print(f"Compression ratio: {compression_ratio} \n")
+    # compression_ratio_dict[N] = compression_ratio
 
-    fig, ax = plt.subplots()
-    plot_image(Zp, ax=ax)
-    ax.set(title=f"{N} x {N} block, s = {s}")
+    if plot:
+        fig, ax = plt.subplots()
+        plot_image(Zp, ax=ax)
+        ax.set(title=f"{N} x {N} block, s = {s}")
 
-    return Yq, Yr
+    return Y_q, Yr
+
+
 
 def lbt_reconstruct(Yq):
     return colxfm(colxfm(Yq.T, C.T).T, C.T) 
