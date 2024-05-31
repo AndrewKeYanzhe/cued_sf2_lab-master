@@ -555,14 +555,14 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         plt.ylabel('Y-axis')
         plt.show()
 
-        # # Plotting the 2D NumPy array as an image
-        # plt.figure(figsize=(8, 8))
-        # plt.imshow(Y_test, cmap='gray', aspect='equal')
-        # plt.colorbar()  # Show color scale
-        # plt.title(str(N)+"block size, Y_test")
-        # plt.xlabel('X-axis')
-        # plt.ylabel('Y-axis')
-        # plt.show()
+        # Plotting the 2D NumPy array as an image
+        plt.figure(figsize=(8, 8))
+        plt.imshow(Y_test, cmap='gray', aspect='equal')
+        plt.colorbar()  # Show color scale
+        plt.title(str(N)+"block size, Y_test inverse regroup")
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
     
     X_size = X.shape[0]
     Y_lowpass_size = int(X_size/N)
