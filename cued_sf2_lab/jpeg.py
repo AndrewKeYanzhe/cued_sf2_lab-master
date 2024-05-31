@@ -841,6 +841,8 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
         Zi_low_pass = Zi_r[:Y_lowpass_size,:Y_lowpass_size]
 
+        Zi_r=Zi_r/N
+
         Zi_r[:Y_lowpass_size,:Y_lowpass_size] = colxfm(colxfm(Zi_low_pass.T, C8.T).T, C8.T)
     
     if plot_graphs:
