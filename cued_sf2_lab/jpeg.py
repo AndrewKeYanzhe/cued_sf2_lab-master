@@ -6,7 +6,7 @@ from typing import Tuple, NamedTuple, Optional
 
 import numpy as np
 from .laplacian_pyramid import quant1, quant2
-from .dct import dct_ii, colxfm, regroup
+from .dct import dct_ii, colxfm, regroup, inverse_regroup
 from .bitword import bitword
 
 __all__ = [
@@ -488,7 +488,7 @@ def dwtgroup(X: np.ndarray, n: int) -> np.ndarray:
 
 
 def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
-        opthuff: bool = False, dcbits: int = 8, log: bool = True, levels = 2
+        opthuff: bool = False, dcbits: int = 8, log: bool = True, levels = 2, plot_graphs=True
         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Encodes the image in X to generate a variable length bit stream.
@@ -526,28 +526,30 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     Yr=regroup(Y, N)/N 
 
     import matplotlib.pyplot as plt
-    # Plotting the 2D NumPy array as an image
-    plt.figure(figsize=(8, 8))
-    plt.imshow(Yr, cmap='gray', aspect='equal')
-    plt.colorbar()  # Show color scale
-    plt.title(str(N)+"block size, Yr")
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
-    plt.show()
+
+    if plot_graphs:
+        # Plotting the 2D NumPy array as an image
+        plt.figure(figsize=(8, 8))
+        plt.imshow(Yr, cmap='gray', aspect='equal')
+        plt.colorbar()  # Show color scale
+        plt.title(str(N)+"block size, Yr")
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
     
     X_size = X.shape[0]
     Y_lowpass_size = int(X_size/N)
-    if levels == 2:
-        Yr[:Y_lowpass_size,:Y_lowpass_size] = regroup(colxfm(colxfm(Yr[:Y_lowpass_size,:Y_lowpass_size], C8).T, C8).T,N)/N
+    # if levels == 2:
+    #     Yr[:Y_lowpass_size,:Y_lowpass_size] = regroup(colxfm(colxfm(Yr[:Y_lowpass_size,:Y_lowpass_size], C8).T, C8).T,N)/N
 
-    
-    plt.figure(figsize=(8, 8))
-    plt.imshow(Yr, cmap='gray', aspect='equal')
-    plt.colorbar()  # Show color scale
-    plt.title(str(N)+"block size, Yr after 2nd level")
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
-    plt.show()
+    if plot_graphs:
+        plt.figure(figsize=(8, 8))
+        plt.imshow(Yr, cmap='gray', aspect='equal')
+        plt.colorbar()  # Show color scale
+        plt.title(str(N)+"block size, Yr after 2nd level")
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
 
     
 
@@ -556,6 +558,10 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         print('Quantising to step size of {}'.format(qstep))
     # Yq = quant1(Y, qstep, qstep).astype('int')
     Yq = quant1(Y, qstep, qstep).astype('int')
+
+    #my code. no quantisation yet
+    # Yq[:Y_lowpass_size,:Y_lowpass_size]=inverse_regroup(Yq[:Y_lowpass_size,:Y_lowpass_size],N)
+    # Yq = inverse_regroup(Yq, N)
 
     # Generate zig-zag scan of AC coefs.
     scan = diagscan(M)
@@ -575,10 +581,11 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     vlc = []
     for r in range(0, sy[0], M):
         for c in range(0, sy[1], M):
-            yq = Yq[r:r+M,c:c+M]
+            yq = Yq[r:r+M,c:c+M] #get sliding window if size MxM
             # Possibly regroup
             if M > N:
                 yq = regroup(yq, N)
+                # yq = Yr
             yqflat = yq.flatten('F')
             # Encode DC coefficient first
             dccoef = yqflat[0] + 2 ** (dcbits-1)
@@ -617,7 +624,8 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
             yq = Yq[r:r+M, c:c+M]
             # Possibly regroup
             if M > N:
-                yq = regroup(yq, N)
+                # yq = regroup(yq, N)
+                yq = Yr
             yqflat = yq.flatten('F')
             # Encode DC coefficient first
             dccoef = yqflat[0] + 2 ** (dcbits-1)
@@ -759,17 +767,19 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     Zi = quant2(Zq, qstep, qstep)
 
+    
+
     if log:
         print('Inverse {} x {} DCT\n'.format(N, N))
     C8 = dct_ii(N)
 
-    if levels == 2:
-        X_size = Zi.shape[0]
-        Y_lowpass_size = int(X_size/N)
+    # if levels == 2:
+    #     X_size = Zi.shape[0]
+    #     Y_lowpass_size = int(X_size/N)
 
-        Zi_low_pass = Zi[:Y_lowpass_size,:Y_lowpass_size]
+    #     Zi_low_pass = Zi[:Y_lowpass_size,:Y_lowpass_size]
 
-        Zi[:Y_lowpass_size,:Y_lowpass_size] = colxfm(colxfm(Zi_low_pass.T, C8.T).T, C8.T)
+    #     Zi[:Y_lowpass_size,:Y_lowpass_size] = colxfm(colxfm(Zi_low_pass.T, C8.T).T, C8.T)
         
         
     Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
