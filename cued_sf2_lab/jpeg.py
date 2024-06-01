@@ -5,9 +5,10 @@ ks800@cam.ac.uk), who did the bulk of the porting from matlab to Python.
 from typing import Tuple, NamedTuple, Optional
 
 import numpy as np
-from .laplacian_pyramid import quant1, quant2
+from .laplacian_pyramid import quant1, quant2, quantise
 from .dct import dct_ii, colxfm, regroup, inverse_regroup
 from .bitword import bitword
+
 
 import matplotlib.pyplot as plt
 
@@ -591,8 +592,9 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     #my code. no quantisation yet
     if levels == 2:
+        # Yr_inv[:Y_lowpass_size,:Y_lowpass_size]=inverse_regroup(Yr[:Y_lowpass_size,:Y_lowpass_size],N)*N      #*N makes output Z blurry
         Yr_inv[:Y_lowpass_size,:Y_lowpass_size]=inverse_regroup(Yr[:Y_lowpass_size,:Y_lowpass_size],N)
-        Yr_inv = inverse_regroup(Yr_inv, N)
+        Yr_inv = inverse_regroup(Yr_inv, N)*N
 
 
     if plot_graphs:
@@ -604,7 +606,10 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         plt.ylabel('Y-axis')
         plt.show()
 
-    Yq = Yr_inv.astype('int')
+   
+    
+    Yq = quantise(Yr_inv, qstep)
+    Yq = Yq.astype('int')
 
     # Generate zig-zag scan of AC coefs.
     scan = diagscan(M)
@@ -860,7 +865,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     if levels == 2:
         Z = colxfm(colxfm(Zi_r_inv.T, C8.T).T, C8.T)
-        Z=Z*2 #dont know why this is needed. TODO find out
+        Z=Z/2.5 #dont know why this is needed. TODO find out
     else:
         Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
 
