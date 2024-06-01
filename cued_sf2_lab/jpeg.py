@@ -965,6 +965,86 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Zi_r_g = inverse_regroup(Zi_r,N)*N #regrouped then grouped
         Z = colxfm(colxfm(Zi_r_g.T, C8.T).T, C8.T)
 
+        import scipy.ndimage as ndimage
+
+        reduce_pixellation_using_variance = False
+
+        if reduce_pixellation_using_variance:
+            def detect_pixelation(image, block_size, variance_threshold):
+                h, w = image.shape
+                pixelated_mask = np.zeros((h, w), dtype=bool)
+                
+                for i in range(0, h, block_size):
+                    for j in range(0, w, block_size):
+                        block = image[i:i+block_size, j:j+block_size]
+                        if block.shape == (block_size, block_size):
+                            variance = np.var(block)
+                            print(variance)
+                            if variance < variance_threshold:
+                                pixelated_mask[i:i+block_size, j:j+block_size] = True
+                return pixelated_mask
+
+            def smooth_pixelated_regions(image, pixelated_mask, sigma=1.0):
+                smoothed_image = image.copy()
+                smoothed_image[pixelated_mask] = ndimage.gaussian_filter(image, sigma=sigma)[pixelated_mask]
+                return smoothed_image
+            
+
+            
+
+                
+
+            # Example usage
+            # image = np.random.rand(256, 256)  # Replace with your actual 256x256 image
+            image=Z
+
+            block_size = 32
+            variance_threshold = 300 # Adjust based on experimentation
+            block_size = 16 #for N=8
+            variance_threshold = 100 # Adjust based on experimentation
+
+            pixelated_mask = detect_pixelation(image, block_size, variance_threshold)
+            smoothed_image = smooth_pixelated_regions(image, pixelated_mask, sigma=2.0)
+            Z=smoothed_image
+
+
+        reduce_pixellation_using_sobel = True
+
+        if reduce_pixellation_using_sobel:
+            def detect_pixelation(image, block_size, edge_threshold):
+                h, w = image.shape
+                pixelated_mask = np.zeros((h, w), dtype=bool)
+                
+                sobel_x = ndimage.sobel(image, axis=0, mode='constant')
+                sobel_y = ndimage.sobel(image, axis=1, mode='constant')
+                edge_magnitude = np.hypot(sobel_x, sobel_y)
+                
+                for i in range(0, h, block_size):
+                    for j in range(0, w, block_size):
+                        block = edge_magnitude[i:i+block_size, j:j+block_size]
+                        if block.shape == (block_size, block_size):
+                            total_edge_magnitude = np.sum(block)
+                            print(total_edge_magnitude)
+                            if total_edge_magnitude < edge_threshold:
+                                pixelated_mask[i:i+block_size, j:j+block_size] = True
+                return pixelated_mask
+
+            def smooth_pixelated_regions(image, pixelated_mask, sigma=1.0):
+                smoothed_image = image.copy()
+                smoothed_image[pixelated_mask] = ndimage.gaussian_filter(image, sigma=sigma)[pixelated_mask]
+                return smoothed_image
+
+            # Example usage
+            image = Z  # Replace with your actual 256x256 image
+
+            block_size = 8
+            edge_threshold = 2000  # Adjust based on experimentation
+
+            pixelated_mask = detect_pixelation(image, block_size, edge_threshold)
+            smoothed_image = smooth_pixelated_regions(image, pixelated_mask, sigma=1.5)
+
+            Z=smoothed_image
+
     else:
         Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
 
