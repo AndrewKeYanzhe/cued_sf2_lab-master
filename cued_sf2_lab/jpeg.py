@@ -744,7 +744,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
 def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         hufftab: Optional[HuffmanTable] = None,
-        dcbits: int = 8, W: int = 256, H: int = 256, log: bool = True, levels =2, plot_graphs=False
+        dcbits: int = 8, W: int = 256, H: int = 256, log: bool = True, levels =2, plot_graphs=False, reduce_pixellation_using_sobel=True
         ) -> np.ndarray:
     '''
     Decodes a (simplified) JPEG bit stream to an image
@@ -1008,7 +1008,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
             Z=smoothed_image
 
 
-        reduce_pixellation_using_sobel = True
+        # reduce_pixellation_using_sobel = True
 
         if reduce_pixellation_using_sobel:
             def detect_pixelation(image, block_size, edge_threshold):
