@@ -770,6 +770,10 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     print("decoding jpeg")
 
+
+    X_size = H
+    Y_lowpass_size = int(X_size/N)
+
     if levels == 2.1:
         vlc_lp = vlc[:65536]
         vlc = vlc[65536:]
@@ -785,7 +789,18 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         vlc_lp = vlc_lp[:last_non_zero_index + 1]
         print(vlc_lp.shape)
 
-        Z_lp =  jpegdec(vlc_lp, qstep, N=N, M=M,dcbits=8, levels=1)
+        Z_lp =  jpegdec(vlc_lp, qstep, H=Y_lowpass_size, W=Y_lowpass_size, N=N, M=M,dcbits=8, levels=1)
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Z_lp, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Z_lp")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+
+
 
         
 
@@ -911,8 +926,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     C8 = dct_ii(N)
 
     if levels == 2:
-        X_size = Zi.shape[0]
-        Y_lowpass_size = int(X_size/N)
+        
 
         Zi_low_pass = Zi_r[:Y_lowpass_size,:Y_lowpass_size]
 
@@ -937,6 +951,11 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Z = colxfm(colxfm(Zi_r_inv.T, C8.T).T, C8.T)
         Z=Z/2.5 #dont know why this is needed. TODO find out
         # Z=Z*N
+    elif levels == 2.1:
+        Zi_r[:Y_lowpass_size,:Y_lowpass_size] = Z_lp
+        Zi_r_g = inverse_regroup(Zi_r,N) #regrouped then grouped
+        Z = colxfm(colxfm(Zi_r_g.T, C8.T).T, C8.T)
+
     else:
         Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
 
