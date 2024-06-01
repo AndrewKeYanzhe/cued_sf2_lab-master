@@ -1024,7 +1024,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
                         block = edge_magnitude[i:i+block_size, j:j+block_size]
                         if block.shape == (block_size, block_size):
                             total_edge_magnitude = np.sum(block)
-                            print(total_edge_magnitude)
+                            # print(total_edge_magnitude)
                             if total_edge_magnitude < edge_threshold:
                                 pixelated_mask[i:i+block_size, j:j+block_size] = True
                 return pixelated_mask
