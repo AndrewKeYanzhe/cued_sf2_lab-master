@@ -101,3 +101,31 @@ def regroup(X, N):
     X = X.reshape(m // N_m, N_m, n // N_n, N_n)  # subdivide the axes
     X = X.transpose((1, 0, 3, 2))                # permute them
     return X.reshape(m, n)                       # and recombine
+
+def inverse_regroup(Y, N):
+    """
+    Reverse the regrouping of rows and columns in Y.
+    Rows/Columns that are adjacent in Y are N apart in the original X.
+
+    Parameters:
+    Y (np.ndarray): Regrouped image to be inverted
+    N (list): Size of 1D DCT performed (could give int)
+
+    Returns:
+    X (np.ndarray): Original image before regrouping
+    """
+    # if N is a 2-element list, N[0] is used for columns and N[1] for rows.
+    # if a single value is given, a square matrix is assumed
+    try:
+        N_m = N_n = operator.index(N)
+    except TypeError:
+        N_m, N_n = N
+
+    m, n = Y.shape
+
+    if m % N_m != 0 or n % N_n != 0:
+        raise ValueError('inverse_regroup error: Y dimensions not multiples of N')
+
+    Y = Y.reshape(N_m, m // N_m, N_n, n // N_n)  # subdivide the axes
+    Y = Y.transpose((1, 0, 3, 2))                # permute them back
+    return Y.reshape(m, n)                       # and recombine

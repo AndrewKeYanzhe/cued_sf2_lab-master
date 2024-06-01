@@ -5,9 +5,13 @@ ks800@cam.ac.uk), who did the bulk of the porting from matlab to Python.
 from typing import Tuple, NamedTuple, Optional
 
 import numpy as np
-from .laplacian_pyramid import quant1, quant2
-from .dct import dct_ii, colxfm, regroup
+from .laplacian_pyramid import quant1, quant2, quantise
+from .dct import dct_ii, colxfm, regroup, inverse_regroup
 from .bitword import bitword
+
+
+import matplotlib.pyplot as plt
+
 
 __all__ = [
     "diagscan",
@@ -488,7 +492,7 @@ def dwtgroup(X: np.ndarray, n: int) -> np.ndarray:
 
 
 def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
-        opthuff: bool = False, dcbits: int = 8, log: bool = True
+        opthuff: bool = False, dcbits: int = 8, log: bool = True, levels = 1, plot_graphs=False
         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Encodes the image in X to generate a variable length bit stream.
@@ -521,10 +525,93 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     C8 = dct_ii(N)
     Y = colxfm(colxfm(X, C8).T, C8).T
 
+    
+
+    Yr=regroup(Y, N)/N 
+
+    # test inverse regroup
+
+    Y_test = inverse_regroup(Yr,N)*N
+    Y_test = regroup(Y_test,N)/N
+
+    print("check for errors in inverse regroup",np.std(Yr-Y_test))
+
+
+    if plot_graphs:
+        # Plotting the 2D NumPy array as an image
+        plt.figure(figsize=(8, 8))
+        plt.imshow(Y, cmap='gray', aspect='equal')
+        plt.colorbar()  # Show color scale
+        plt.title(str(N)+"block size, Y")
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
+
+        # Plotting the 2D NumPy array as an image
+        plt.figure(figsize=(8, 8))
+        plt.imshow(Yr, cmap='gray', aspect='equal')
+        plt.colorbar()  # Show color scale
+        plt.title(str(N)+"block size, Yr")
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
+
+        # # Plotting the 2D NumPy array as an image
+        # plt.figure(figsize=(8, 8))
+        # plt.imshow(Y_test, cmap='gray', aspect='equal')
+        # plt.colorbar()  # Show color scale
+        # plt.title(str(N)+"block size, Y_test inverse regroup")
+        # plt.xlabel('X-axis')
+        # plt.ylabel('Y-axis')
+        # plt.show()
+    
+    X_size = X.shape[0]
+    Y_lowpass_size = int(X_size/N)
+    if levels == 2:
+        print("doing 2 layer dct")
+        Yr[:Y_lowpass_size,:Y_lowpass_size] = regroup(colxfm(colxfm(Yr[:Y_lowpass_size,:Y_lowpass_size], C8).T, C8).T,N)/N
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Yr, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+"block size, Yr after 2nd level")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+
+    
+
     # Quantise to integers.
     if log:
         print('Quantising to step size of {}'.format(qstep))
+    # Yq = quant1(Y, qstep, qstep).astype('int')
     Yq = quant1(Y, qstep, qstep).astype('int')
+
+    Yr_inv = np.copy(Yr)
+
+    #my code. no quantisation yet
+    if levels == 2:
+        # Yr_inv[:Y_lowpass_size,:Y_lowpass_size]=inverse_regroup(Yr[:Y_lowpass_size,:Y_lowpass_size],N)*N      #*N makes output Z blurry
+        Yr_inv[:Y_lowpass_size,:Y_lowpass_size]=inverse_regroup(Yr[:Y_lowpass_size,:Y_lowpass_size],N)
+        Yr_inv = inverse_regroup(Yr_inv, N)*N
+
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Yr_inv, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title("dct block size "+str(N)+" Yr inverse regroup")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+
+   
+    if levels==2:
+        Yq = quantise(Yr_inv, qstep)
+        Yq = Yq.astype('int')
+        # Yq = quant1(Yr_inv,qstep,qstep).astype('int')     #quant1 gives worse results
+    
 
     # Generate zig-zag scan of AC coefs.
     scan = diagscan(M)
@@ -542,31 +629,79 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     sy = Yq.shape
     huffhist = np.zeros(16 ** 2)
     vlc = []
+
+    if levels==2.1:
+        dcbits=0
+
+    if levels == 2.1:
+        print("\n\nrunning dct on low pass")
+        print("-----------------------------------")
+        Yr_2 = regroup(Y,N)
+        vlc_lp, hufftab_lp = jpegenc(Yr_2[:Y_lowpass_size,:Y_lowpass_size], qstep, N=4, M=4, levels=1, dcbits=8) 
+        print("-----------------------------------")
+        print("finished running dct on low pass\n\n")
+
+        print("vlc_lp np shape",vlc_lp.shape)
+        vlc = vlc_lp.tolist()
+
+        # print(vlc)
+
+        vlc += [[0, 0]] * (65536 - len(vlc))
+
+
+        vlc = np.split(vlc, [0])[1:]
+        
+        # print(vlc)
+
+
     for r in range(0, sy[0], M):
         for c in range(0, sy[1], M):
-            yq = Yq[r:r+M,c:c+M]
+            yq = Yq[r:r+M,c:c+M] #get sliding window of size MxM
             # Possibly regroup
             if M > N:
                 yq = regroup(yq, N)
+                # yq = Yr
             yqflat = yq.flatten('F')
             # Encode DC coefficient first
-            dccoef = yqflat[0] + 2 ** (dcbits-1)
+            # dcbits=0
+            # yqflat[0]=0
+            if levels == 2.1:
+                dccoef=0
+            else:
+                dccoef = yqflat[0] + 2 ** (dcbits-1)
+            
             if dccoef not in range(2**dcbits):
+                print(2**dcbits-1,dccoef)
                 raise ValueError(
                     'DC coefficients too large for desired number of bits')
+            # print([dccoef, dcbits])
             vlc.append(np.array([[dccoef, dcbits]]))
+            # vlc.append(np.zeros(len([[dccoef, dcbits]])))
+
             # Encode the other AC coefficients in scan order
             # huffenc() also updates huffhist.
             ra1 = runampl(yqflat[scan])
             vlc.append(huffenc(huffhist, ra1, ehuf))
     # (0, 2) array makes this work even if `vlc == []`
+
+    # print()
+    # print("shape of vlc after huffman",(lambda lst: [len(lst)] + (lambda f, l: f(f, l[0]) if isinstance(l[0], list) else [])((lambda f, l: f(f, l)), lst) if lst else [0])(vlc))
+    print("shape of vlc after huffman",len(vlc),len(vlc[0]))
+    # print("shape of vlc after huffman",np.array(vlc).shape)#inhomogeneous cols
+    # print(vlc)
+
+
+
     vlc = np.concatenate([np.zeros((0, 2), dtype=np.intp)] + vlc)
+    print("shape of vlc after concatenate",vlc.shape)
+    # print(vlc)
 
     # Return here if the default tables are sufficient, otherwise repeat the
     # encoding process using the custom designed huffman tables.
     if not opthuff:
         if log:
             print('Bits for coded image = {}'.format(sum(vlc[:, 1])))
+            print("not using optional huffman table")
         return vlc, dhufftab
 
     # Design custom huffman tables.
@@ -587,6 +722,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
             # Possibly regroup
             if M > N:
                 yq = regroup(yq, N)
+                # yq = Yr
             yqflat = yq.flatten('F')
             # Encode DC coefficient first
             dccoef = yqflat[0] + 2 ** (dcbits-1)
@@ -608,7 +744,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
 def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         hufftab: Optional[HuffmanTable] = None,
-        dcbits: int = 8, W: int = 256, H: int = 256, log: bool = True
+        dcbits: int = 8, W: int = 256, H: int = 256, log: bool = True, levels =2, plot_graphs=False
         ) -> np.ndarray:
     '''
     Decodes a (simplified) JPEG bit stream to an image
@@ -631,6 +767,42 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
         Z: the output greyscale image
     '''
+
+    print("decoding jpeg")
+
+
+    X_size = H
+    Y_lowpass_size = int(X_size/N)
+
+    if levels == 2.1:
+        vlc_lp = vlc[:65536]
+        vlc = vlc[65536:]
+
+        # Assuming vlc_lp is a list of lists
+
+        # Find the index of the last row that is not [0, 0]
+        last_non_zero_index = len(vlc_lp) - 1
+        while last_non_zero_index >= 0 and all(x == 0 for x in vlc_lp[last_non_zero_index]):
+            last_non_zero_index -= 1
+
+        # Remove all [0, 0] at the end of the list
+        vlc_lp = vlc_lp[:last_non_zero_index + 1]
+        print(vlc_lp.shape)
+
+        Z_lp =  jpegdec(vlc_lp, qstep, H=Y_lowpass_size, W=Y_lowpass_size, N=4, M=4,dcbits=8, levels=1)
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Z_lp, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Z_lp")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+
+
+
+        
 
     opthuff = (hufftab is not None)
     if M % N != 0:
@@ -678,9 +850,10 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
             # Decode DC coef - assume no of bits is correctly given in vlc table.
             cf = 0
-            if vlc[i, 1] != dcbits:
-                raise ValueError(
-                    'The bits for the DC coefficient does not agree with vlc table')
+            # print("vlc i1",vlc[i,1])
+            # if vlc[i, 1] != dcbits:
+            #     raise ValueError(
+            #         'The bits for the DC coefficient does not agree with vlc table')
             yq[cf] = vlc[i, 0] - 2 ** (dcbits-1)
             i += 1
 
@@ -728,10 +901,73 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     Zi = quant2(Zq, qstep, qstep)
 
+    Zi_r = regroup(Zi,N)/N
+
+    if plot_graphs:
+        plt.figure(figsize=(8, 8))
+        plt.imshow(Zi, cmap='gray', aspect='equal')
+        plt.colorbar()  # Show color scale
+        plt.title(str(N)+" block size, Zi")
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
+        
+        # plt.figure(figsize=(8, 8))
+        # plt.imshow(Zi_r, cmap='gray', aspect='equal')
+        # plt.colorbar()  # Show color scale
+        # plt.title(str(N)+" block size, Zi_r")
+        # plt.xlabel('X-axis')
+        # plt.ylabel('Y-axis')
+        # plt.show()
+    
+
     if log:
         print('Inverse {} x {} DCT\n'.format(N, N))
     C8 = dct_ii(N)
-    Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
+
+    if levels == 2:
+        
+
+        Zi_low_pass = Zi_r[:Y_lowpass_size,:Y_lowpass_size]
+
+        Zi_r=Zi_r/N
+
+        Zi_r[:Y_lowpass_size,:Y_lowpass_size] = colxfm(colxfm(Zi_low_pass.T, C8.T).T, C8.T)
+    
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Zi_r, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Zi_r")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+
+    # TODO. low pass seems to have lower magnitude
+    
+    Zi_r_inv = inverse_regroup(Zi_r,N)
+
+    if levels == 2:
+        Z = colxfm(colxfm(Zi_r_inv.T, C8.T).T, C8.T)
+        Z=Z/2.5 #dont know why this is needed. TODO find out
+        # Z=Z*N
+    elif levels == 2.1:
+        Zi_r[:Y_lowpass_size,:Y_lowpass_size] = Z_lp/N
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Zi_r, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Zi_r")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+        Zi_r_g = inverse_regroup(Zi_r,N)*N #regrouped then grouped
+        Z = colxfm(colxfm(Zi_r_g.T, C8.T).T, C8.T)
+
+    else:
+        Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
+
 
     return Z
 
