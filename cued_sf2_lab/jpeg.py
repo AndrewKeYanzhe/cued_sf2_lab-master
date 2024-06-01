@@ -629,6 +629,20 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     sy = Yq.shape
     huffhist = np.zeros(16 ** 2)
     vlc = []
+
+    dcbits=0
+
+    if levels == 2.1:
+        print("running dct on low pass")
+        print("-----------------------------------")
+        Yr_2 = regroup(Y,N)
+        vlc_lp, hufftab_lp = jpegenc(Yr_2[:Y_lowpass_size,:Y_lowpass_size], qstep, N=N, M=M, levels=1, dcbits=8) 
+        print("-----------------------------------")
+        print("finished running dct on low pass\n")
+
+
+    
+
     for r in range(0, sy[0], M):
         for c in range(0, sy[1], M):
             yq = Yq[r:r+M,c:c+M] #get sliding window of size MxM
@@ -638,12 +652,18 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
                 # yq = Yr
             yqflat = yq.flatten('F')
             # Encode DC coefficient first
+            # dcbits=0
+            # yqflat[0]=0
             dccoef = yqflat[0] + 2 ** (dcbits-1)
+            dccoef=0
             if dccoef not in range(2**dcbits):
                 print(2**dcbits-1,dccoef)
                 raise ValueError(
                     'DC coefficients too large for desired number of bits')
+            # print([dccoef, dcbits])
             vlc.append(np.array([[dccoef, dcbits]]))
+            # vlc.append(np.zeros(len([[dccoef, dcbits]])))
+
             # Encode the other AC coefficients in scan order
             # huffenc() also updates huffhist.
             ra1 = runampl(yqflat[scan])
@@ -656,6 +676,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     if not opthuff:
         if log:
             print('Bits for coded image = {}'.format(sum(vlc[:, 1])))
+            print("not using optional huffman table")
         return vlc, dhufftab
 
     # Design custom huffman tables.
@@ -768,9 +789,10 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
             # Decode DC coef - assume no of bits is correctly given in vlc table.
             cf = 0
-            if vlc[i, 1] != dcbits:
-                raise ValueError(
-                    'The bits for the DC coefficient does not agree with vlc table')
+            # print("vlc i1",vlc[i,1])
+            # if vlc[i, 1] != dcbits:
+            #     raise ValueError(
+            #         'The bits for the DC coefficient does not agree with vlc table')
             yq[cf] = vlc[i, 0] - 2 ** (dcbits-1)
             i += 1
 
