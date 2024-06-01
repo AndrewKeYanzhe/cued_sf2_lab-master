@@ -610,6 +610,8 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     
     Yq = quantise(Yr_inv, qstep)
     Yq = Yq.astype('int')
+    # Yq = quant1(Yr_inv,qstep,qstep).astype('int')     #quant1 gives worse results
+    
 
     # Generate zig-zag scan of AC coefs.
     scan = diagscan(M)
@@ -629,7 +631,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     vlc = []
     for r in range(0, sy[0], M):
         for c in range(0, sy[1], M):
-            yq = Yq[r:r+M,c:c+M] #get sliding window if size MxM
+            yq = Yq[r:r+M,c:c+M] #get sliding window of size MxM
             # Possibly regroup
             if M > N:
                 yq = regroup(yq, N)
@@ -866,6 +868,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     if levels == 2:
         Z = colxfm(colxfm(Zi_r_inv.T, C8.T).T, C8.T)
         Z=Z/2.5 #dont know why this is needed. TODO find out
+        # Z=Z*N
     else:
         Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
 
