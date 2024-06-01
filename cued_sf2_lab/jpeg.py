@@ -640,8 +640,18 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         print("-----------------------------------")
         print("finished running dct on low pass\n")
 
+        print("vlc_lp np shape",vlc_lp.shape)
+        vlc = vlc_lp.tolist()
 
-    
+        print(vlc)
+
+        vlc += [[0, 0]] * (65536 - len(vlc))
+
+
+        vlc = np.split(vlc, [0])[1:]
+        
+        print(vlc)
+
 
     for r in range(0, sy[0], M):
         for c in range(0, sy[1], M):
@@ -669,7 +679,18 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
             ra1 = runampl(yqflat[scan])
             vlc.append(huffenc(huffhist, ra1, ehuf))
     # (0, 2) array makes this work even if `vlc == []`
+
+    # print()
+    # print("shape of vlc after huffman",(lambda lst: [len(lst)] + (lambda f, l: f(f, l[0]) if isinstance(l[0], list) else [])((lambda f, l: f(f, l)), lst) if lst else [0])(vlc))
+    print("shape of vlc after huffman",len(vlc),len(vlc[0]))
+    # print("shape of vlc after huffman",np.array(vlc).shape)#inhomogeneous cols
+    # print(vlc)
+
+
+
     vlc = np.concatenate([np.zeros((0, 2), dtype=np.intp)] + vlc)
+    print("shape of vlc after concatenate",vlc.shape)
+    print(vlc)
 
     # Return here if the default tables are sufficient, otherwise repeat the
     # encoding process using the custom designed huffman tables.
@@ -742,6 +763,9 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
         Z: the output greyscale image
     '''
+
+
+    vlc = vlc[65536:]
 
     opthuff = (hufftab is not None)
     if M % N != 0:
