@@ -643,14 +643,14 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         print("vlc_lp np shape",vlc_lp.shape)
         vlc = vlc_lp.tolist()
 
-        print(vlc)
+        # print(vlc)
 
-        vlc += [[0, 0]] * (65536 - len(vlc))
+        # vlc += [[0, 0]] * (4096 - len(vlc))
 
 
         vlc = np.split(vlc, [0])[1:]
         
-        print(vlc)
+        # print(vlc)
 
 
     for r in range(0, sy[0], M):
@@ -690,7 +690,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     vlc = np.concatenate([np.zeros((0, 2), dtype=np.intp)] + vlc)
     print("shape of vlc after concatenate",vlc.shape)
-    print(vlc)
+    # print(vlc)
 
     # Return here if the default tables are sufficient, otherwise repeat the
     # encoding process using the custom designed huffman tables.
@@ -764,8 +764,36 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Z: the output greyscale image
     '''
 
+    if levels == 2.1:
+        vlc_lp = vlc[:4096]
 
-    vlc = vlc[65536:]
+        # Assuming vlc_lp is a list of lists
+
+        # Find the index of the last row that is not [0, 0]
+        last_non_zero_index = len(vlc_lp) - 1
+        while last_non_zero_index >= 0 and all(x == 0 for x in vlc_lp[last_non_zero_index]):
+            last_non_zero_index -= 1
+
+        # Remove all [0, 0] at the end of the list
+        vlc_lp = vlc_lp[:last_non_zero_index + 1]
+
+
+        print("vlc lp shape",vlc_lp.shape)
+
+    
+        Z_lp = jpegdec(vlc_lp, qstep, N=N, M=M,dcbits=8, levels=2.1)
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Z_lp, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Z_lp")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+
+
+        vlc = vlc[4096:]
 
     opthuff = (hufftab is not None)
     if M % N != 0:
