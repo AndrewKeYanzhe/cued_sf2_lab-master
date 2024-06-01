@@ -860,6 +860,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     if levels == 2:
         Z = colxfm(colxfm(Zi_r_inv.T, C8.T).T, C8.T)
+        Z=Z*2 #dont know why this is needed. TODO find out
     else:
         Z = colxfm(colxfm(Zi.T, C8.T).T, C8.T)
 
