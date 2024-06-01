@@ -492,7 +492,7 @@ def dwtgroup(X: np.ndarray, n: int) -> np.ndarray:
 
 
 def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
-        opthuff: bool = False, dcbits: int = 8, log: bool = True, levels = 1, plot_graphs=True
+        opthuff: bool = False, dcbits: int = 8, log: bool = True, levels = 1, plot_graphs=False
         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Encodes the image in X to generate a variable length bit stream.
@@ -556,14 +556,14 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         plt.ylabel('Y-axis')
         plt.show()
 
-        # Plotting the 2D NumPy array as an image
-        plt.figure(figsize=(8, 8))
-        plt.imshow(Y_test, cmap='gray', aspect='equal')
-        plt.colorbar()  # Show color scale
-        plt.title(str(N)+"block size, Y_test inverse regroup")
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-        plt.show()
+        # # Plotting the 2D NumPy array as an image
+        # plt.figure(figsize=(8, 8))
+        # plt.imshow(Y_test, cmap='gray', aspect='equal')
+        # plt.colorbar()  # Show color scale
+        # plt.title(str(N)+"block size, Y_test inverse regroup")
+        # plt.xlabel('X-axis')
+        # plt.ylabel('Y-axis')
+        # plt.show()
     
     X_size = X.shape[0]
     Y_lowpass_size = int(X_size/N)
@@ -571,14 +571,14 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         print("doing 2 layer dct")
         Yr[:Y_lowpass_size,:Y_lowpass_size] = regroup(colxfm(colxfm(Yr[:Y_lowpass_size,:Y_lowpass_size], C8).T, C8).T,N)/N
 
-    if plot_graphs:
-        plt.figure(figsize=(8, 8))
-        plt.imshow(Yr, cmap='gray', aspect='equal')
-        plt.colorbar()  # Show color scale
-        plt.title(str(N)+"block size, Yr after 2nd level")
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-        plt.show()
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Yr, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+"block size, Yr after 2nd level")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
 
     
 
@@ -597,14 +597,14 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Yr_inv = inverse_regroup(Yr_inv, N)*N
 
 
-    if plot_graphs:
-        plt.figure(figsize=(8, 8))
-        plt.imshow(Yr_inv, cmap='gray', aspect='equal')
-        plt.colorbar()  # Show color scale
-        plt.title("dct block size "+str(N)+" Yr inverse regroup")
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-        plt.show()
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Yr_inv, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title("dct block size "+str(N)+" Yr inverse regroup")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
 
    
     if levels==2:
@@ -634,12 +634,12 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         dcbits=0
 
     if levels == 2.1:
-        print("running dct on low pass")
+        print("\n\nrunning dct on low pass")
         print("-----------------------------------")
         Yr_2 = regroup(Y,N)
         vlc_lp, hufftab_lp = jpegenc(Yr_2[:Y_lowpass_size,:Y_lowpass_size], qstep, N=N, M=M, levels=1, dcbits=8) 
         print("-----------------------------------")
-        print("finished running dct on low pass\n")
+        print("finished running dct on low pass\n\n")
 
         print("vlc_lp np shape",vlc_lp.shape)
         vlc = vlc_lp.tolist()
@@ -694,7 +694,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
     vlc = np.concatenate([np.zeros((0, 2), dtype=np.intp)] + vlc)
     print("shape of vlc after concatenate",vlc.shape)
-    print(vlc)
+    # print(vlc)
 
     # Return here if the default tables are sufficient, otherwise repeat the
     # encoding process using the custom designed huffman tables.
@@ -744,7 +744,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
 def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         hufftab: Optional[HuffmanTable] = None,
-        dcbits: int = 8, W: int = 256, H: int = 256, log: bool = True, levels =2, plot_graphs=True
+        dcbits: int = 8, W: int = 256, H: int = 256, log: bool = True, levels =2, plot_graphs=False
         ) -> np.ndarray:
     '''
     Decodes a (simplified) JPEG bit stream to an image
@@ -912,13 +912,13 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         plt.ylabel('Y-axis')
         plt.show()
         
-        plt.figure(figsize=(8, 8))
-        plt.imshow(Zi_r, cmap='gray', aspect='equal')
-        plt.colorbar()  # Show color scale
-        plt.title(str(N)+" block size, Zi_r")
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-        plt.show()
+        # plt.figure(figsize=(8, 8))
+        # plt.imshow(Zi_r, cmap='gray', aspect='equal')
+        # plt.colorbar()  # Show color scale
+        # plt.title(str(N)+" block size, Zi_r")
+        # plt.xlabel('X-axis')
+        # plt.ylabel('Y-axis')
+        # plt.show()
     
 
     if log:
@@ -934,14 +934,14 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
         Zi_r[:Y_lowpass_size,:Y_lowpass_size] = colxfm(colxfm(Zi_low_pass.T, C8.T).T, C8.T)
     
-    if plot_graphs:
-        plt.figure(figsize=(8, 8))
-        plt.imshow(Zi_r, cmap='gray', aspect='equal')
-        plt.colorbar()  # Show color scale
-        plt.title(str(N)+" block size, Zi_r")
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-        plt.show()
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Zi_r, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Zi_r")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
 
     # TODO. low pass seems to have lower magnitude
     
@@ -952,8 +952,17 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Z=Z/2.5 #dont know why this is needed. TODO find out
         # Z=Z*N
     elif levels == 2.1:
-        Zi_r[:Y_lowpass_size,:Y_lowpass_size] = Z_lp
-        Zi_r_g = inverse_regroup(Zi_r,N) #regrouped then grouped
+        Zi_r[:Y_lowpass_size,:Y_lowpass_size] = Z_lp/N
+
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Zi_r, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Zi_r")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+        Zi_r_g = inverse_regroup(Zi_r,N)*N #regrouped then grouped
         Z = colxfm(colxfm(Zi_r_g.T, C8.T).T, C8.T)
 
     else:
