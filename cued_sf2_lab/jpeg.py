@@ -630,7 +630,8 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
     huffhist = np.zeros(16 ** 2)
     vlc = []
 
-    dcbits=0
+    if levels==2.1:
+        dcbits=0
 
     if levels == 2.1:
         print("running dct on low pass")
@@ -643,14 +644,14 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         print("vlc_lp np shape",vlc_lp.shape)
         vlc = vlc_lp.tolist()
 
-        print(vlc)
+        # print(vlc)
 
         vlc += [[0, 0]] * (65536 - len(vlc))
 
 
         vlc = np.split(vlc, [0])[1:]
         
-        print(vlc)
+        # print(vlc)
 
 
     for r in range(0, sy[0], M):
@@ -664,8 +665,11 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
             # Encode DC coefficient first
             # dcbits=0
             # yqflat[0]=0
-            dccoef = yqflat[0] + 2 ** (dcbits-1)
-            dccoef=0
+            if levels == 2.1:
+                dccoef=0
+            else:
+                dccoef = yqflat[0] + 2 ** (dcbits-1)
+            
             if dccoef not in range(2**dcbits):
                 print(2**dcbits-1,dccoef)
                 raise ValueError(
@@ -764,8 +768,26 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Z: the output greyscale image
     '''
 
+    print("decoding jpeg")
 
-    vlc = vlc[65536:]
+    if levels == 2.1:
+        vlc_lp = vlc[:65536]
+        vlc = vlc[65536:]
+
+        # Assuming vlc_lp is a list of lists
+
+        # Find the index of the last row that is not [0, 0]
+        last_non_zero_index = len(vlc_lp) - 1
+        while last_non_zero_index >= 0 and all(x == 0 for x in vlc_lp[last_non_zero_index]):
+            last_non_zero_index -= 1
+
+        # Remove all [0, 0] at the end of the list
+        vlc_lp = vlc_lp[:last_non_zero_index + 1]
+        print(vlc_lp.shape)
+
+        Z_lp =  jpegdec(vlc_lp, qstep, N=N, M=M,dcbits=8, levels=1)
+
+        
 
     opthuff = (hufftab is not None)
     if M % N != 0:
