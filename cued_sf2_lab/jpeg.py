@@ -607,10 +607,10 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         plt.show()
 
    
-    
-    Yq = quantise(Yr_inv, qstep)
-    Yq = Yq.astype('int')
-    # Yq = quant1(Yr_inv,qstep,qstep).astype('int')     #quant1 gives worse results
+    if levels==2:
+        Yq = quantise(Yr_inv, qstep)
+        Yq = Yq.astype('int')
+        # Yq = quant1(Yr_inv,qstep,qstep).astype('int')     #quant1 gives worse results
     
 
     # Generate zig-zag scan of AC coefs.
