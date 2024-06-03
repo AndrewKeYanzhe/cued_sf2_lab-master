@@ -637,7 +637,15 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         print("\n\nrunning dct on low pass")
         print("-----------------------------------")
         Yr_2 = regroup(Y,N)
-        vlc_lp, hufftab_lp = jpegenc(Yr_2[:Y_lowpass_size,:Y_lowpass_size], qstep, N=4, M=4, levels=1, dcbits=8) 
+
+        #hard code
+        if qstep<=25: 
+            dcbits_lp = 10
+            print("using dcbits_lp=10")
+        else:
+            dcbits_lp=dcbits
+        
+        vlc_lp, hufftab_lp = jpegenc(Yr_2[:Y_lowpass_size,:Y_lowpass_size], qstep, N=4, M=4, levels=1, dcbits=dcbits_lp) 
         print("-----------------------------------")
         print("finished running dct on low pass\n\n")
 
