@@ -643,7 +643,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
             dcbits_lp = 10
             print("using dcbits_lp=10")
         else:
-            dcbits_lp=dcbits
+            dcbits_lp=8
         
         vlc_lp, hufftab_lp = jpegenc(Yr_2[:Y_lowpass_size,:Y_lowpass_size], qstep, N=4, M=4, levels=1, dcbits=dcbits_lp) 
         print("-----------------------------------")
