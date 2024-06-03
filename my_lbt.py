@@ -9,13 +9,23 @@ from cued_sf2_lab.dct import colxfm
 from cued_sf2_lab.lbt import pot_ii
 from scipy.optimize import minimize_scalar
 
-def lbt(X, N, s, step_size, refstep=17, plot=True):
+def lbt(X, N, s, step_size, refstep=17, rise1_factor=1.0, plot=True):
     """
     Parameters:
         X: input image
         N: N * N blocks
         s: scaling factor
-        refstep: reference step for direct quantisation, for dctbpp
+        step_size: step size for quantisation
+        refstep = 17: reference step size for direct quantisation, for dctbpp
+        rise1_factor = 0.5: the point at which the first rise occurs on each side of the zero step, 
+                            range: (0,2)
+        plot = True: whether plot the recontructed image
+    Returns:
+        Yq: quantised lbt image
+        Yr: regrouped (after quantisation) lbt image 
+        Z: reconstructed dct image
+        rms_error: rms error between reconstructed image Z and input image X
+        tot_bits_comp: total bits needed for compression
     """ 
     Xq = quantise(X, refstep)
 
@@ -30,7 +40,7 @@ def lbt(X, N, s, step_size, refstep=17, plot=True):
 
     Y = colxfm(colxfm(Xp, C).T, C).T        # dct
     # Yq = quantise(Y, opt_step)              # quantisation
-    Yq = quantise(Y, step_size)              # quantisation
+    Yq = quantise(Y, step_size, rise1_factor*step_size)              # quantisation
     Yr = regroup(Yq, N)/N                   # regroup
     Z = colxfm(colxfm(Yq.T, C.T).T, C.T)    # reconstruction
 
@@ -38,7 +48,8 @@ def lbt(X, N, s, step_size, refstep=17, plot=True):
     Zp[:,t] = colxfm(Zp[:,t].T, Pr.T).T
     Zp[t,:] = colxfm(Zp[t,:], Pr.T)
 
-    print(f"RMS error: {np.std(Zp-X)}")
+    rms_error = np.std(Zp-X)
+    print(f"RMS error: {rms_error}")
 
     tot_bits_comp = dctbpp(Yr, 16)          # always use dctbpp(Yr, 16)
     tot_bits_direct = bpp(Xq) * Xq.size
@@ -51,7 +62,7 @@ def lbt(X, N, s, step_size, refstep=17, plot=True):
         plot_image(Zp, ax=ax)
         ax.set(title=f"{N} x {N} block, s = {s}, step_size = {step_size}")
 
-    return Yq, Yr
+    return Yq, Yr, Z, rms_error, tot_bits_comp
 
 # def lbt(X, N, s, step_size, refstep=17, plot=True):
 
@@ -154,7 +165,7 @@ def dctbpp(Yr, N):
             total_bits += bits 
     return total_bits
 
-def find_optimal_step_size(X, N, s, refstep):
+def find_optimal_step_size(X, N, s, refstep=17):
     """Find the optimal step size by minimising RMS error (matched RMS error)"""
     def mse_diff(opt_step):
             

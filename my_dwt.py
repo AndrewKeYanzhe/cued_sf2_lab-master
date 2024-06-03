@@ -8,21 +8,29 @@ from cued_sf2_lab.laplacian_pyramid import bpp
 from typing import Tuple
 from scipy.optimize import minimize_scalar
 
-def dwt_equal_step_size(X, n, refstep):
+def dwt_equal_step_size(X, n, step_size, refstep=17, plot=True):
     """
     Parameters:
         X: input image
         n: number of levels
-        refstep: reference step for direct quantisation
+        step_size: step size for quantisation
+        refstep = 17: reference step for direct quantisation
+        plot = True: whether plot the recontructed image
+    Returns:
+        Yq: quantised dwt image
+        Z: reconstructed dct image
+        rms_error: rms error between reconstructed image Z and input image X
+        tot_bits_comp: total bits needed for compression
     """
-    optimal_step = find_optimal_step_size(X, n, refstep)[0]
-    print(f"Optimal step size for {n} layers: {optimal_step}")
+    # optimal_step = find_optimal_step_size(X, n, refstep)[0]
+    # print(f"Optimal step size for {n} layers: {optimal_step}")
 
-    dwtstep = np.ones((3, n+1)) * optimal_step 
+    dwtstep = np.ones((3, n+1)) * step_size 
     Y = nlevdwt(X, n)
     Yq, dwtent = quantdwt(Y, dwtstep)
     Z = nlevidwt(Yq, n)
-    print(f"RMS error for {n} layers: {np.std(Z-X)}")
+    rms_error = np.std(Z-X)
+    print(f"RMS error for {n} layers: {rms_error}")
 
     bits_comp = np.sum(dwtent)
     bits_direct = bpp(quantise(X, refstep)) * X.size
@@ -30,22 +38,37 @@ def dwt_equal_step_size(X, n, refstep):
     print(f"Total compression bits needed for {n} layers: {bits_comp} bits")
     print(f"Compression ratio for {n} layers: {comp_ratio} \n")
 
-    fig, ax = plt.subplots()
-    plot_image(Z, ax=ax)
-    ax.set(title=f"{n} levels")
+    if plot:
+        fig, ax = plt.subplots()
+        plot_image(Z, ax=ax)
+        ax.set(title=f"{n} levels")
 
-    return None
+    return Yq, Z, rms_error, bits_comp
 
-def dwt_equal_mse(X, n, refstep):
+def dwt_equal_mse(X, n, step_size, refstep=17):
+    """
+    Parameters:
+        X: input image
+        n: number of levels
+        step_size: step size for quantisation
+        refstep = 17: reference step for direct quantisation
+    Returns:
+        Yq: quantised dwt image
+        Z: reconstructed dct image
+        rms_error: rms error between reconstructed image Z and input image X
+        tot_bits_comp: total bits needed for compression
+    """
 
-    optimal_step = find_optimal_step_size_mse(X, n, refstep)[0]
-    print(f"Optimal step size for {n} layers: {optimal_step}")
-    dwtstep = np.ones((3, n+1)) * optimal_step * find_step_ratios_mse(X, n)
+    # optimal_step = find_optimal_step_size_mse(X, n, refstep)[0]
+    # print(f"Optimal step size for {n} layers: {optimal_step}")
+    dwtstep = np.ones((3, n+1)) * step_size * find_step_ratios_mse(X, n)
 
     Y = nlevdwt(X, n)
     Yq, dwtent = quantdwt(Y, dwtstep)
     Z = nlevidwt(Yq, n)
-    print(f"RMS error for {n} layers: {np.std(Z-X)}")
+    Z = post_process_image(Z, 0.2)
+    rms_error = np.std(Z-X)
+    print(f"RMS error for {n} layers: {rms_error}")
 
     bits_comp = np.sum(dwtent)
     bits_direct = bpp(quantise(X, refstep)) * X.size
@@ -57,7 +80,7 @@ def dwt_equal_mse(X, n, refstep):
     plot_image(Z, ax=ax)
     ax.set(title=f"{n} levels")
 
-    return None
+    return Yq, Z, rms_error, bits_comp
 
 def nlevdwt(X, n):
     """Perform n-level DWT. """
@@ -118,25 +141,25 @@ def quantdwt(Y: np.ndarray, dwtstep: np.ndarray) -> Tuple[np.ndarray, np.ndarray
     return Yq, dwtent
 
 # ----- For Equal Step Size -----
-def find_optimal_step_size(X, n, step):
-    def mse_diff(opt_step):
+# def find_optimal_step_size(X, n, step):
+#     def mse_diff(opt_step):
 
-        Xq = quantise(X, step) # quantised X
-        optimalMSE = np.std(X - Xq)
+#         Xq = quantise(X, step) # quantised X
+#         optimalMSE = np.std(X - Xq)
 
-        Y = nlevdwt(X, n) # DWT
-        dwtstep = np.ones((3, n+1)) * opt_step  
-        Yq = quantdwt(Y, dwtstep)[0] # quantise
-        Z = nlevidwt(Yq, n) # iDWT
-        MSE = np.std(Z - X)
+#         Y = nlevdwt(X, n) # DWT
+#         dwtstep = np.ones((3, n+1)) * opt_step  
+#         Yq = quantdwt(Y, dwtstep)[0] # quantise
+#         Z = nlevidwt(Yq, n) # iDWT
+#         MSE = np.std(Z - X)
 
-        MSEdiff = abs(MSE - optimalMSE)
-        return MSEdiff
+#         MSEdiff = abs(MSE - optimalMSE)
+#         return MSEdiff
 
-    res = minimize_scalar(mse_diff, bounds=(1, 256), method='bounded')
-    minMSE = res.fun  # minimum
-    minstep = res.x  # minimizer
-    return minstep, minMSE
+#     res = minimize_scalar(mse_diff, bounds=(1, 256), method='bounded')
+#     minMSE = res.fun  # minimum
+#     minstep = res.x  # minimizer
+#     return minstep, minMSE
 
 # ----- For Equal MSE -----
 def find_step_ratios_mse(X, n): 
@@ -189,3 +212,11 @@ def find_optimal_step_size_mse(X, n, refstep):
     minMSE = res.fun  # minimum
     minstep = res.x  # minimizer
     return minstep, minMSE
+
+
+# ----- Below are the improvements -----
+
+from scipy.ndimage import gaussian_filter
+def post_process_image(Z, sigma=1):
+    return gaussian_filter(Z, sigma)
+

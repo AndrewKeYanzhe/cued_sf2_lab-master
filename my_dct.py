@@ -11,23 +11,48 @@ from cued_sf2_lab.dct import colxfm
 from typing import Tuple
 from scipy.optimize import minimize_scalar
 
-def dct(X, N, refstep):
+def dct(X, N, step_size, refstep=17, rise1_factor=1.0, plot=True):
+    """
+    Parameters:
+        X: input image
+        N: N * N blocks
+        step_size: step size for quantisation
+        refstep = 17: reference step size for direct quantisation, for dctbpp
+        rise1_factor = 0.5: the point at which the first rise occurs on each side of the zero step, 
+                            range: (0,2)
+        plot = True: whether plot the recontructed image
+    Returns:
+        Yq: quantised dct image
+        Yr: regrouped (after quantisation) dct image 
+        Z: reconstructed dct image
+        rms_error: rms error between reconstructed image Z and input image X
+        tot_bits_comp: total bits needed for compression
+    """ 
+    
     Xq = quantise(X, refstep)
+
     C = dct_ii(N)
-    opt_step = find_optimal_step_size(X, refstep, C)[0]
+    # opt_step = find_optimal_step_size(X, refstep, C)[0]
+    
     Y = colxfm(colxfm(X, C).T, C).T         # dct
-    Yq = quantise(Y, opt_step)              # quantisation
+    Yq = quantise(Y, step_size, rise1_factor*step_size)              # quantisation
     Yr = regroup(Yq, N)/N
     tot_bits_comp = dctbpp(Yr, N)
     tot_bits_direct =  bpp(Xq) * Xq.size
 
     Z = colxfm(colxfm(Yq.T, C.T).T, C.T)    # reconstruction
+    rms_error = np.std(Z - X)
+    comp_ratio = tot_bits_direct / tot_bits_comp
 
-    print(f"RMS error: {np.std(Z-X)}")
-    print("Compression ratio: ", tot_bits_direct / tot_bits_comp)
-    fig, ax = plt.subplots()
-    plot_image(Z, ax=ax)
-    ax.set(title=f"{N} x {N} block")
+    print(f"RMS error: {rms_error}")
+    print(f"Compression ratio: {comp_ratio}")
+
+    if plot:
+        fig, ax = plt.subplots()
+        plot_image(Z, ax=ax)
+        ax.set(title=f"{N} x {N} block")
+
+    return Yq, Yr, Z, rms_error, tot_bits_comp
 
 def dctbpp(Yr, N):
     # Your code here
@@ -39,16 +64,9 @@ def dctbpp(Yr, N):
             Ys = Yr[i:i+step, j:j+step] 
             bits = bpp(Ys) * Ys.size
             total_bits += bits 
-     
-    '''
-    for i in range(N):
-        for j in range(N):
-            Ys = Yr[i:i+N, j:j+N] 
-
-    '''
     return total_bits
 
-
+'''
 def find_optimal_step_size(X, N, refstep):
     def mse_diff(opt_step):
 
@@ -74,3 +92,4 @@ def find_optimal_step_size(X, N, refstep):
     optimal_step, optimal_MSE = find_optimal_step_size(X, N, refstep)
     print("Optimal step size: ", optimal_step)
     print("Optimal MSE: ", optimal_MSE)
+'''
