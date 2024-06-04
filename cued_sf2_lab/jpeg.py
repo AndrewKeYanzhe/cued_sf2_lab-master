@@ -640,7 +640,7 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
         #hard code
         if qstep<=25: 
-            dcbits_lp = 10
+            dcbits_lp = 9
             print("using dcbits_lp=10")
         else:
             dcbits_lp=8
