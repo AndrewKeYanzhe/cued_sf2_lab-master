@@ -961,6 +961,18 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         Z=Z/2.5 #dont know why this is needed. TODO find out
         # Z=Z*N
     elif levels == 2.1:
+        if plot_graphs:
+            plt.figure(figsize=(8, 8))
+            plt.imshow(Zi_r, cmap='gray', aspect='equal')
+            plt.colorbar()  # Show color scale
+            plt.title(str(N)+" block size, Zi_r before adding subimage")
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.show()
+        Zi_r_g = inverse_regroup(Zi_r,N)*N #regrouped then grouped
+        Z = colxfm(colxfm(Zi_r_g.T, C8.T).T, C8.T)
+
+
         Zi_r[:Y_lowpass_size,:Y_lowpass_size] = Z_lp/N
 
         if plot_graphs:
