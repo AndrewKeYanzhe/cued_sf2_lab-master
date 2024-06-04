@@ -548,10 +548,11 @@ def jpegenc(X: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         plt.show()
 
         # Plotting the 2D NumPy array as an image
-        plt.figure(figsize=(8, 8))
+        plt.figure(figsize=(4, 4))
         plt.imshow(Yr, cmap='gray', aspect='equal')
         plt.colorbar()  # Show color scale
-        plt.title(str(N)+"block size, Yr")
+        # plt.title(str(N)+"block size, Yr")
+        plt.title(f"Yr, block size N={N}")
         plt.xlabel('X-axis')
         plt.ylabel('Y-axis')
         plt.show()
