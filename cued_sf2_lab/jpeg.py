@@ -1049,6 +1049,8 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
                             if total_edge_magnitude < edge_threshold:
                                 pixelated_mask[i:i+block_size, j:j+block_size] = True
                 return pixelated_mask
+            
+            
 
             def smooth_pixelated_regions(image, pixelated_mask, sigma=1.0):
                 smoothed_image = image.copy()
@@ -1063,6 +1065,16 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
 
             pixelated_mask = detect_pixelation(image, block_size, edge_threshold)
             smoothed_image = smooth_pixelated_regions(image, pixelated_mask, sigma=1.5)
+            
+
+            if plot_graphs:
+                plt.figure(figsize=(4, 4))
+                plt.imshow(pixelated_mask, cmap=plt.cm.gray.reversed(), aspect='equal')
+                plt.colorbar(fraction=0.046)  # Show color scale
+                plt.title("Sobel filter output. black=no edges")
+                # plt.xlabel('X-axis')
+                # plt.ylabel('Y-axis')
+                plt.show()
 
             Z=smoothed_image
 
