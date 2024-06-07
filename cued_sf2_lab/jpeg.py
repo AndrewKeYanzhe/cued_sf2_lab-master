@@ -798,6 +798,7 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         vlc_lp = vlc_lp[:last_non_zero_index + 1]
         print(vlc_lp.shape)
 
+        dcbits_lp = 8
         #hard code
         if qstep<=25: 
             dcbits_lp = 9
