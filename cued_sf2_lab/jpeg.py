@@ -798,7 +798,13 @@ def jpegdec(vlc: np.ndarray, qstep: float, N: int = 8, M: int = 8,
         vlc_lp = vlc_lp[:last_non_zero_index + 1]
         print(vlc_lp.shape)
 
-        Z_lp =  jpegdec(vlc_lp, qstep, H=Y_lowpass_size, W=Y_lowpass_size, N=4, M=4,dcbits=8, levels=1)
+        #hard code
+        if qstep<=25: 
+            dcbits_lp = 9
+            print("using dcbits_lp=10")
+
+        Z_lp =  jpegdec(vlc_lp, qstep, H=Y_lowpass_size, W=Y_lowpass_size, N=4, M=4,dcbits=dcbits_lp, levels=1)
+        
 
         if plot_graphs:
             plt.figure(figsize=(8, 8))
